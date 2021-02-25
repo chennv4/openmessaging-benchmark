@@ -41,9 +41,9 @@ public class KafkaBenchmarkProducer implements BenchmarkProducer {
         ProducerRecord<String, byte[]> record = new ProducerRecord<>(topic, key.orElse(null), payload);
 
         CompletableFuture<Void> future = new CompletableFuture<>();
-
         producer.send(record, (metadata, exception) -> {
             if (exception != null) {
+		    System.out.println("@@@@@@@@@@@ KafkaBenchmarkProducer sendAsync EXCEPTION @@@@@@@@@ "+exception);
                 future.completeExceptionally(exception);
             } else {
                 future.complete(null);

@@ -28,6 +28,6 @@ public class RandomGenerator {
     public static final String getRandomString() {
         byte[] buffer = new byte[5];
         random.nextBytes(buffer);
-        return BaseEncoding.base64Url().omitPadding().encode(buffer);
+        return BaseEncoding.base64Url().omitPadding().encode(buffer).toLowerCase();
     }
 }
