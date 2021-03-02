@@ -75,7 +75,7 @@ public class WorkloadGenerator implements AutoCloseable {
         List<String> topics = worker.createTopics(new TopicsInfo(workload.topics, workload.partitionsPerTopic));
         log.info("Created {} topics in {} ms", topics.size(), timer.elapsedMillis());
 
-        createConsumers(topics);
+        //createConsumers(topics);
         createProducers(topics);
 
         ensureTopicsAreReady();
@@ -142,7 +142,7 @@ public class WorkloadGenerator implements AutoCloseable {
         // In this case we just publish 1 message and then wait for consumers to receive the data
         worker.probeProducers();
 
-        while (true) {
+        /* while (true) {
             CountersStats stats = worker.getCountersStats();
 
             if (stats.messagesReceived < expectedMessages) {
@@ -154,7 +154,13 @@ public class WorkloadGenerator implements AutoCloseable {
             } else {
                 break;
             }
-        }
+        } */
+	 try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
 
         log.info("All consumers are ready");
     }

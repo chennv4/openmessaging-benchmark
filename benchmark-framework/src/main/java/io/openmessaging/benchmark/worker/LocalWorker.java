@@ -156,7 +156,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
         for (int i = 0; i < topicsInfo.numberOfTopics; i++) {
             String topic = String.format("%s-%s-%04d", topicPrefix, RandomGenerator.getRandomString(), i);
             topics.add(topic);
-            futures.add(benchmarkDriver.createTopic(topic, topicsInfo.numberOfPartitionsPerTopic));
+            //futures.add(benchmarkDriver.createTopic(topic, topicsInfo.numberOfPartitionsPerTopic));
         }
 
         futures.forEach(CompletableFuture::join);

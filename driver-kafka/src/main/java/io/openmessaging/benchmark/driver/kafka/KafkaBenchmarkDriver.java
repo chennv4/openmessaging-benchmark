@@ -21,6 +21,7 @@ package io.openmessaging.benchmark.driver.kafka;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -68,8 +69,34 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     private boolean enableTransaction;
     private int eventsPerTransaction;
 
+    public static Properties loadConfigFromClasspath(String propertiesFileName) {
+        Properties props = new Properties();
+        try (InputStream input = KafkaBenchmarkDriver.class.getClassLoader()
+                .getResourceAsStream(propertiesFileName)) {
+            if (input == null) {
+                System.out.println("Unable to find {} in classpath"+ propertiesFileName);
+            }
+            props.load(input);
+        } catch (IOException e) {
+            System.out.println("Unable to load {} from classpath"+ propertiesFileName);
+            throw new RuntimeException(e);
+        }
+        return props;
+    }
+
     @Override
     public void initialize(File configurationFile, StatsLogger statsLogger) throws IOException {
+
+	System.out.println("_______ ENV : pravega_client_auth_method________ : "+System.getenv("pravega_client_auth_method"));
+        System.out.println("_______ ENV : pravega_client_auth_loadDynamic________ : "+System.getenv("pravega_client_auth_loadDynamic"));
+        System.out.println("_______ ENV : KEYCLOAK_SERVICE_ACCOUNT_FILE________ : "+System.getenv("KEYCLOAK_SERVICE_ACCOUNT_FILE"));
+
+        Properties configProps = loadConfigFromClasspath("app.properties");
+        System.out.println("@@@@@@@@@@@ PRODUCER bootstrap.servers : "+configProps.getProperty("bootstrap.servers"));
+        System.out.println("@@@@@@@@@@@ PRODUCER scope.name : "+configProps.getProperty("scope.name"));
+        System.out.println("@@@@@@@@@@@ PRODUCER stream.name : "+configProps.getProperty("stream.name"));
+        System.out.println("@@@@@@@@@@@ PRODUCER create.scope : "+configProps.getProperty("create.scope"));
+
         config = mapper.readValue(configurationFile, Config.class);
 
         Properties commonProperties = new Properties();
@@ -86,16 +113,31 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
             this.eventsPerTransaction = Integer.parseInt(producerProperties.getProperty("eventsPerTransaction", "100"));
         }
 
+	 producerProperties.put("bootstrap.servers", configProps.getProperty("bootstrap.servers"));
+        producerProperties.put("key.serializer", configProps.getProperty("key.serializer"));
+        producerProperties.put("value.serializer", configProps.getProperty("value.serializer"));
+        producerProperties.put("pravega.scope", configProps.getProperty("scope.name"));
+        producerProperties.put("topic.name", configProps.getProperty("stream.name"));
+        producerProperties.put("create.scope", configProps.getProperty("create.scope"));
+
+
         consumerProperties = new Properties();
         commonProperties.forEach((key, value) -> consumerProperties.put(key, value));
         consumerProperties.load(new StringReader(config.consumerConfig));
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
 
+	consumerProperties.put("bootstrap.servers", configProps.getProperty("bootstrap.servers"));
+        consumerProperties.put("key.serializer", configProps.getProperty("key.serializer"));
+        consumerProperties.put("value.serializer", configProps.getProperty("value.serializer"));
+        consumerProperties.put("pravega.scope", configProps.getProperty("scope.name"));
+        consumerProperties.put("topic.name", configProps.getProperty("stream.name"));
+        consumerProperties.put("create.scope", configProps.getProperty("create.scope"));
+
         topicProperties = new Properties();
         topicProperties.load(new StringReader(config.topicConfig));
 
-        admin = AdminClient.create(commonProperties);
+        admin = null; //AdminClient.create(commonProperties);
 
         producer = new KafkaProducer<>(producerProperties);
     }
@@ -149,12 +191,15 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public void close() throws Exception {
-        producer.close();
+        if(producer != null)
+            producer.close();
 
         for (BenchmarkConsumer consumer : consumers) {
-            consumer.close();
+            if(consumer != null)
+                consumer.close();
         }
-        admin.close();
+        if(admin != null)
+            admin.close();
     }
 
     private static final ObjectMapper mapper = new ObjectMapper(new YAMLFactory())
